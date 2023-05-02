@@ -1,16 +1,20 @@
 // Load data from CSV file
 d3.csv("https://raw.githubusercontent.com/A-LM/SequencesSunburst/main/Radial%20Data.csv").then(function(data) {
 
-  // Aggregate sum of SUMA DECONTATA
-  var totalSum = d3.sum(data, function(d) { return +d['SUMA DECONTATA']; });
+  function createRadialSunburstChart(data, column) {
+      // Aggregate sum of column
+      var totalSum = d3.sum(data, function(d) { return +d[column]; });
 
-    createRadialSunburstChart(data, totalSum);
-    
-  // Create root node
-    var root = d3.hierarchy({values: data})
-      .sum(function(d) { return +d['SUMA DECONTATA']; })
-      .sort(function(a, b) { return b.value - a.value; })
-      .value(totalSum);
+      // Create root node
+      var root = d3.hierarchy({values: data})
+        .sum(function(d) { return +d[column]; })
+        .sort(function(a, b) { return b.value - a.value; });
+
+      var svg = d3.select("#chart-container").append("svg")
+        .attr("viewBox", [0, 0, width, width])
+        .attr("font-size", 10)
+        .attr("font-family", "sans-serif")
+        .attr("text-anchor", "middle");
 
   // Add properties for percentage and value relative to root
   root.each(function(d) {
