@@ -120,7 +120,8 @@ function _sunburst(partition,data,d3,radius,width,color,arc,mousearc)
     .join("path")
     .attr("fill", d => color(d.data.name))
     .attr("d", arc);
-
+d3.select('#chart-container').append('svg').attr('viewBox', `0 0 ${width} ${height}`).attr('width', '100%').attr('height', '100%').append('g').attr('transform', `translate(${width / 2},${height / 2})`); 
+ 
   svg
     .append("g")
     .attr("fill", "none")
