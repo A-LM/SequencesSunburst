@@ -4,10 +4,13 @@ d3.csv("https://raw.githubusercontent.com/A-LM/SequencesSunburst/main/Radial%20D
   // Aggregate sum of SUMA DECONTATA
   var totalSum = d3.sum(data, function(d) { return +d['SUMA DECONTATA']; });
 
+    createRadialSunburstChart(data, totalSum);
+    
   // Create root node
-  var root = d3.hierarchy({values: data})
-    .sum(function(d) { return +d['SUMA DECONTATA']; })
-    .sort(function(a, b) { return b.value - a.value; });
+    var root = d3.hierarchy({values: data})
+      .sum(function(d) { return +d['SUMA DECONTATA']; })
+      .sort(function(a, b) { return b.value - a.value; })
+      .value(totalSum);
 
   // Add properties for percentage and value relative to root
   root.each(function(d) {
