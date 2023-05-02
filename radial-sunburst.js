@@ -1,75 +1,93 @@
-import { group, stratify } from 'd3';
+// Import d3.js
+import { arc } from 'd3-shape';
+import { stratify, hierarchy } from 'd3-hierarchy';
+import { csv } from 'd3-fetch';
 
-function createRadialSunburstChart(data, columnName) {
-  const stratifiedData = stratify()
-    .id(d => d.Sequence)
-    .parentId(d => d.ParentSequence)
-    (data);
+export function createRadialSunburstChart(data, rootName) {
 
-  const root = group(stratifiedData, columnName);
+  // Create the chart container
+  const chartContainer = document.querySelector('#chart-container');
 
-  const width = 700;
-  const radius = width / 6;
-  const color = d3.scaleOrdinal(d3.schemeCategory10);
+  // Set the width and height of the chart
+  const width = chartContainer.clientWidth;
+  const height = chartContainer.clientHeight;
 
-  const partition = d3.partition()
-    .size([2 * Math.PI, radius]);
+  // Define the radius of the sunburst chart
+  const radius = Math.min(width, height) / 2;
 
-  const arc = d3.arc()
-    .startAngle(d => d.x0)
-    .endAngle(d => d.x1)
-    .padAngle(0.01)
-    .padRadius(radius / 2)
-    .innerRadius(d => d.y0)
-    .outerRadius(d => d.y1 - 1);
+  // Define the partition layout
+  const partition = data => {
+    const root = stratify()
+        .id(d => d.name)
+        .parentId(d => d.parent)(data)
+        .sum(d => d.value)
+        .sort((a, b) => b.value - a.value);
+    return hierarchy(root)
+        .sum(d => d.value)
+        .sort((a, b) => b.value - a.value);
+  }
 
-  const svg = d3.select('#chart-container')
-    .append('svg')
-    .attr('viewBox', [-width / 2, -width / 2, width, width]);
+  // Define the partition layout function
+  const partitionLayout = partition(data);
 
-  const arcs = svg.selectAll('g')
-    .data(partition(root).descendants())
-    .enter()
-    .append('g');
+  // Define the arc generator
+  const arcGenerator = arc()
+.startAngle(d => d.x0)
+.endAngle(d => d.x1)
+.padAngle(d => Math.min((d.x1 - d.x0) / 2, 0.005))
+.padRadius(radius * 1.5)
+.innerRadius(d => d.y0 * radius)
+.outerRadius(d => Math.max(d.y0 * radius, d.y1 * radius - 1));
 
-  arcs.append('path')
-    .attr('fill', d => { while (d.depth > 1) d = d.parent; return color(d.data.Sequence); })
-    .attr('d', arc);
+// Append the svg object to the chart container
+const svg = d3.select(chartContainer).append('svg')
+.attr('width', width)
+.attr('height', height)
+.style('font', '10px sans-serif')
+.style('width', '100%')
+.style('height', 'auto')
+.append('g')
+.attr('transform', translate(${width / 2},${height / 2}));
 
-  arcs.append('text')
-    .attr('transform', d => `translate(${arc.centroid(d)})`)
-    .attr('dy', '0.35em')
-    .text(d => d.data.Sequence);
+// Define the tooltip
+const tooltip = d3.select(chartContainer).append('div')
+.attr('class', 'tooltip')
+.style('opacity', 0);
 
-  svg.node();
+// Define the mouseover function
+const mouseover = function(event, d) {
+const sequence = d.ancestors().reverse().map(d => d.data.name).join(' > ');
+const value = d.value.toLocaleString();
+tooltip.html(${sequence}<br/>${value})
+.style('opacity', 1)
+.style('left', ${event.pageX}px)
+.style('top', ${event.pageY}px);
+// Highlight the nodes in the sequence
+d3.selectAll('path')
+  .filter(node => d.ancestors().indexOf(node) === -1)
+  .style('opacity', 0.3);
 }
 
-export default function define(runtime, observer) {
-  const main = runtime.module();
-  function toString() { return this.url; }
-  const fileAttachments = new Map([
-    ["Radial Data.csv", {url: new URL("./Radial Data.csv", import.meta.url), mimeType: "text/csv", toString}]
-  ]);
-  main.builtin("FileAttachment", runtime.fileAttachments(name => {
-    const file = fileAttachments.get(name);
-    if (!file) {
-      throw new Error(`File not found: ${name}`);
-    }
-    return {
-      url: file.url,
-      blob: () => fetch(file.url).then(response => response.blob()),
-      text: () => fetch(file.url).then(response => response.text()),
-      arrayBuffer: () => fetch(file.url).then(response => response.arrayBuffer())
-    };
-  }, new Set(["Radial Data.csv"])));
-  
-  main.variable(observer("data")).define("data", ["FileAttachment"], function(FileAttachment){return(
-    FileAttachment('Radial Data.csv').csv()
-  )});
-  
-  main.variable(observer()).define(["createRadialSunburstChart","data"], function(createRadialSunburstChart,data){return(
-    createRadialSunburstChart(data, 'SUMA DECONTATA')
-  )});
+// Define the mouseleave function
+const mouseleave = function(d) {
+tooltip.style('opacity', 0);
 
-  return main;
+// Remove the highlighting
+d3.selectAll('path')
+  .style('opacity', 1);
+}
+
+// Append the arcs to the svg object
+svg.selectAll('path')
+.data(partitionLayout.descendants())
+.join('path')
+.attr('fill', d => {
+while (d.depth > 1) d = d.parent;
+return color(d.data.name);
+})
+.attr('d', arcGenerator)
+.on('mouseover', mouseover)
+.on('mouseleave', mouseleave)
+.append('title')
+.text(d => ${d.ancestors().reverse().map(d => d.data.name).join(' > ')}\n${d.value.toLocaleString()});
 }
