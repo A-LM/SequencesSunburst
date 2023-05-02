@@ -175,9 +175,11 @@ md`
 `
 )}
 
-async function _csv(d3,FileAttachment){return(
-d3.csvParseRows(await FileAttachment("/Users/almartinescu/Desktop/Migrating graphs/Radial Data.csv").text())
-)}
+async function _csv(d3, FileAttachment) {
+  const csvUrl = 'https://raw.githubusercontent.com/A-LM/SequencesSunburst/main/Radial%20Data.csv';
+  const csvText = await fetch(csvUrl).then(response => response.text());
+  return d3.csvParseRows(csvText);
+}
 
 function _data(buildHierarchy,csv){return(
 buildHierarchy(csv)
